@@ -63,6 +63,11 @@ src_path = os.path.join(project_root, 'src')
 if src_path not in sys.path:
     sys.path.append(src_path)
 
+# Ensure the src directory exists and contains the required modules
+if not os.path.exists(os.path.join(src_path, 'data_loader.py')):
+    st.error("Could not find 'data_loader.py' in the 'src' directory. Please ensure the file exists.")
+    st.stop()
+
 # Import necessary functions from src
 from data_loader import load_data
 from preprocessor import preprocess_data
@@ -118,7 +123,7 @@ def get_model_assets():
 # Load models and scaler
 assets = get_model_assets()
 scaler = assets.get('scaler')
-xgb_model = assets.get('xgb_smote')
+xgb_model = assets.get('xgb_smote_model')
 # Re-enabling ANN models. Ensure these models are actually available and correctly loaded
 ann_class_weights_model = assets.get('ann_class_weights')
 ann_smote_model = assets.get('ann_smote')
