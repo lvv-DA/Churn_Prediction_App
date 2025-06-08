@@ -22,4 +22,5 @@ google-generativeai
 # as they cause the protobuf conflict and are likely not needed for the app's runtime.
 # If your app strictly needs a specific Keras for TensorFlow,
 # and it's not handled by google-generativeai's dependencies, you might add:
-tf-keras==2.16.0
+#tf-keras==2.16.0
+tensorflow==2.16.1
