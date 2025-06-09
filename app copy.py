@@ -150,6 +150,8 @@ ENSEMBLE_MODELS = {
 }
 
 
+# --- Streamlit UI Components (Start of app.py UI) ---
+st.set_page_config(layout="wide", page_title="Customer Churn Predictor", page_icon="👋")
 
 st.title("💡 Customer Churn Prediction and AI-Powered Retention")
 st.markdown("This application predicts customer churn and provides AI-driven recommendations for retention.")
