@@ -93,7 +93,7 @@ PRE_LISTED_OFFERS = {
     """
 }
 
-@st.cache_resource(hash_funcs={tf.keras.Model: lambda _: None}) # Add hash_funcs to prevent hashing issues with Keras models
+@st.cache_resource(hash_funcs={tf.h5.Model: lambda _: None}) # Add hash_funcs to prevent hashing issues with Keras models
 def get_model_assets():
     """
     Loads all trained models and the scaler.

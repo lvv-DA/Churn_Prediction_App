@@ -79,7 +79,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_cw_probs = ann_model_cw.predict(X_test_scaled)
     print("ANN (Class Weights) Classification Report:\n", classification_report(y_test, ann_cw_preds))
     print("ANN (Class Weights) AUC-ROC Score:", roc_auc_score(y_test, ann_cw_probs))
-    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.keras'))
+    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.h5'))
     print("ANN (Class Weights) model saved.")
 
     # --- ANN Model with SMOTE ---
@@ -96,7 +96,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_sm_probs = ann_model_sm.predict(X_test_scaled)
     print("ANN (SMOTE) Classification Report:\n", classification_report(y_test, ann_sm_preds))
     print("ANN (SMOTE) AUC-ROC Score:", roc_auc_score(y_test, ann_sm_probs))
-    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.keras'))
+    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.h5'))
     print("ANN (SMOTE) model saved.")
 
     # --- ANN Model with Focal Loss ---
@@ -113,7 +113,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_fl_probs = ann_model_fl.predict(X_test_scaled)
     print("ANN (Focal Loss) Classification Report:\n", classification_report(y_test, ann_fl_preds))
     print("ANN (Focal Loss) AUC-ROC Score:", roc_auc_score(y_test, ann_fl_probs))
-    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.keras'))
+    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.h5'))
     print("ANN (Focal Loss) model saved.")
 
     # Save training columns for consistent preprocessing during prediction
