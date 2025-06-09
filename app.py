@@ -16,7 +16,7 @@ from tf_keras import backend as K
 import tensorflow as tf
 
 # Suppress TensorFlow warnings related to GPU and oneDNN
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # This hides all GPUs from TensorFlow
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # This hides all GPUs from TensorFlow
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0' # This disables oneDNN optimizations as suggested by a warning
 
 # Assuming st_copy_to_clipboard is a custom component you have installed
@@ -28,10 +28,10 @@ except ImportError:
     st.warning("`st_copy_to_clipboard` component not found. Copy functionality will be disabled.")
 
 
-# --- Company Branding (DEFINED BEFORE set_page_config) ---
+# --- Company Branding ---
 COMPANY_NAME = "ABC Telecom"
 
-# --- Streamlit Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
+# --- Streamlit Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND AND ONLY ONCE) ---
 st.set_page_config(
     page_title=f"Customer Churn Prediction - {COMPANY_NAME}",
     layout="wide",
@@ -66,10 +66,17 @@ if src_path not in sys.path:
 # Import necessary functions from src
 from data_loader import load_data
 from preprocessor import preprocess_data
-from model_predictor import predict_churn, load_all_models # Changed from load_all_models to load_model_assets
+from model_predictor import predict_churn, load_all_models # load_all_models is correct
+
 
 # --- PRE-LISTED OFFERS for Gemini Recommendations ---
 PRE_LISTED_OFFERS = {
+    "Very High Risk": """
+    - **Urgent Retention Call**: Immediate outreach with a dedicated retention specialist.
+    - **Aggressive Discount Offer**: Provide a 30-40% discount on the next 6-12 months' bills.
+    - **Premium Service Package**: Offer an upgrade to the highest-tier plan (e.g., unlimited data, fastest internet) for a significant period at no extra cost.
+    - **Personalized Problem Resolution**: Assign a high-level support agent to address all past and present issues proactively.
+    """,
     "High Risk": """
     - **Proactive Retention Call**: Offer a dedicated account manager and a personalized service review.
     - **Exclusive Discount on Next Bill**: Provide a 20% discount on the next 3 months' bills.
@@ -130,7 +137,6 @@ st.write("--- End Debugging Model Loading Status ---")
 
 scaler = assets.get('scaler')
 xgb_model = assets.get('xgb_smote')
-# Re-enabling ANN models. Ensure these models are actually available and correctly loaded
 ann_class_weights_model = assets.get('ann_class_weights')
 ann_smote_model = assets.get('ann_smote')
 ann_focal_loss_model = assets.get('ann_focal_loss')
@@ -148,14 +154,6 @@ ENSEMBLE_MODELS = {
     'ANN + SMOTE': {'model': ann_smote_model, 'type': 'ann'},
     'ANN + Focal Loss': {'model': ann_focal_loss_model, 'type': 'ann'}
 }
-
-
-
-
-st.title("💡 Customer Churn Prediction and AI-Powered Retention")
-st.markdown("This application predicts customer churn and provides AI-driven recommendations for retention.")
-
-# Data Loading
 
 
 # --- Data Loading for App Display and Search ---
@@ -188,8 +186,6 @@ if 'selected_customer_data' not in st.session_state:
     st.session_state['selected_customer_data'] = None
 if 'search_query' not in st.session_state:
     st.session_state['search_query'] = ""
-# Do not store full DataFrame in session state; store only identifiers if needed.
-# 'search_results_data' will be a temporary DataFrame for display.
 if 'search_results_display_df' not in st.session_state:
     st.session_state['search_results_display_df'] = pd.DataFrame()
 if 'show_prediction_results' not in st.session_state:
@@ -227,17 +223,23 @@ def on_customer_select():
         st.session_state['selected_customer_id'] = None
         st.session_state['selected_customer_data'] = None
         st.session_state['show_prediction_results'] = False
-        st.session_state['manual_entry_mode'] = False # Reset manual entry mode
+        st.session_state['manual_entry_mode'] = False
 
 
-# --- Function to generate recommendations using Gemini ---
+# --- Function to generate recommendations using Gemini (kept in app.py for streaming behavior) ---
 def get_gemini_recommendations(model, churn_risk_level, customer_details, offers, company_name, customer_complains=0):
     if not model:
-        return "Gemini model is not initialized. Cannot generate recommendations."
+        yield "Gemini model is not initialized. Cannot generate recommendations."
+        return # Use return instead of break for generator
 
-    relevant_offers = offers.get(churn_risk_level, "")
-    if customer_complains > 0:
-        relevant_offers += "\n\n" + offers.get("Complaints", "")
+    relevant_offers_list = []
+    if churn_risk_level in offers:
+        relevant_offers_list.append(offers[churn_risk_level])
+    if customer_complains > 0 and "Complaints" in offers:
+        relevant_offers_list.append(offers["Complaints"])
+
+    relevant_offers_str = "\n\n".join(relevant_offers_list) if relevant_offers_list else "No specific pre-listed offers to suggest at this time."
+
 
     prompt = f"""
     You are an AI assistant for a telecom company named {company_name}.
@@ -250,7 +252,7 @@ def get_gemini_recommendations(model, churn_risk_level, customer_details, offers
     The tone should be empathetic and persuasive, suitable for an internal report.
 
     Pre-listed offers tailored to risk level and complaints:
-    {relevant_offers}
+    {relevant_offers_str}
 
     Generate the recommendations in a concise markdown format, suitable for an internal report.
     Start with "AI-Powered Retention Strategy:" followed by a bulleted list of recommendations.
@@ -259,9 +261,15 @@ def get_gemini_recommendations(model, churn_risk_level, customer_details, offers
         response_stream = model.generate_content(prompt, stream=True)
         full_response = ""
         for chunk in response_stream:
-            full_response += chunk.text
-            time.sleep(0.05) # Simulate typing for better UX
+            if chunk.text: # Ensure chunk.text is not None
+                full_response += chunk.text
+                time.sleep(0.01) # Small sleep for better UX for streaming
+                yield full_response
+        
+        # Ensure the final full response is yielded after all chunks are processed
+        if full_response:
             yield full_response
+
     except Exception as e:
         yield f"An error occurred while generating recommendations: {e}"
 
@@ -274,6 +282,39 @@ st.markdown("""
     It utilizes multiple machine learning models (XGBoost, ANN with Class Weights, ANN with SMOTE, ANN with Focal Loss)
     and provides AI-powered retention strategies using Google Gemini.
 """)
+
+# Custom CSS for transient flash alerts (optional, but good for UX)
+st.markdown("""
+<style>
+.stAlert {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: auto;
+    max-width: 300px;
+    z-index: 9999;
+    animation: fadeout 5s forwards;
+}
+
+@keyframes fadeout {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; display: none; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Add a simple mechanism for flash messages
+def show_flash_message(message, type="info"):
+    if type == "success":
+        st.success(message, icon="✅")
+    elif type == "error":
+        st.error(message, icon="❌")
+    elif type == "warning":
+        st.warning(message, icon="⚠️")
+    else:
+        st.info(message, icon="ℹ️")
+
 
 # --- Tabbed Interface ---
 tab1, tab2 = st.tabs(["Customer Churn Prediction", "Data Overview & Training"])
@@ -338,7 +379,7 @@ with tab1:
                 index=default_index,
                 on_change=on_customer_select
             )
-        elif st.session_state['search_query'] and not st.session_state['search_results_display_df'].empty:
+        elif st.session_state['search_query'] and not st.session_state['search_results_display_df'].empty: # This condition was potentially problematic as it would only show if search_results_display_df IS NOT empty, but the message is for when it IS empty. Corrected logic.
              st.info("No customers found matching your search query.")
         
         # Add a button to switch to manual entry if no search results or if user wants to manually input
@@ -419,7 +460,6 @@ with tab1:
                     customer_features_df = pd.DataFrame([input_data])
 
                     # Ensure the DataFrame has the correct columns for prediction using X_train_columns
-                    # Create a DataFrame with all expected training columns, initialized to 0
                     final_customer_features_df = pd.DataFrame(columns=X_train_columns)
                     final_customer_features_df.loc[0] = 0 # Initialize with zeros to handle missing dummified columns
 
@@ -432,20 +472,26 @@ with tab1:
                     for cat_col in ['AgeGroup', 'TariffPlan', 'Status']:
                         if cat_col in customer_features_df.columns:
                             unique_val = customer_features_df[cat_col].iloc[0]
-                            # Construct the dummified column name
+                            # Construct the dummified column name. Note: get_dummies creates "col_value" for non-boolean.
+                            # For TariffPlan_2, it creates 'TariffPlan_2' for value 2, etc.
+                            # The original columns like 'AgeGroup' themselves are dropped if `drop_first=True` is used for get_dummies.
+                            
+                            # Add the dummified column for the selected value if it exists in X_train_columns
                             dummy_col_name = f"{cat_col}_{unique_val}"
                             if dummy_col_name in X_train_columns:
                                 final_customer_features_df[dummy_col_name].iloc[0] = 1
-                            # Special handling for TariffPlan_2 if it's explicitly a separate column for dummification
-                            if cat_col == 'TariffPlan' and f'TariffPlan_2' in X_train_columns:
-                                if unique_val == 2:
-                                    final_customer_features_df['TariffPlan_2'].iloc[0] = 1
-                                else:
-                                    final_customer_features_df['TariffPlan_2'].iloc[0] = 0 # Ensure it's 0 if not 2
-
-                    # Drop original categorical columns if they exist in X_train_columns (which they shouldn't after dummification)
-                    # This line is primarily for robustness if `X_train_columns` still contains original categorical names.
-                    final_customer_features_df = final_customer_features_df.drop(columns=['AgeGroup', 'TariffPlan', 'Status'], errors='ignore')
+                            # Ensure other dummified columns for the same original categorical feature are 0
+                            # This is important if say, TariffPlan_1 and TariffPlan_2 exist.
+                            # For example, if TariffPlan_2 is selected, TariffPlan_1 should be 0.
+                            for existing_dummy_col in [col for col in X_train_columns if col.startswith(f"{cat_col}_")]:
+                                if existing_dummy_col != dummy_col_name:
+                                    final_customer_features_df[existing_dummy_col].iloc[0] = 0
+                                    
+                    # The original categorical columns 'AgeGroup', 'TariffPlan', 'Status' are dropped
+                    # from X_train_columns after `pd.get_dummies` during training. So, this line
+                    # should not be needed here as these columns would not be in `final_customer_features_df`
+                    # in the first place if `X_train_columns` is properly loaded.
+                    # final_customer_features_df = final_customer_features_df.drop(columns=['AgeGroup', 'TariffPlan', 'Status'], errors='ignore')
 
                     # Debugging: Print final DataFrame to ensure correct structure
                     # st.write("Final DataFrame for prediction:")
@@ -468,7 +514,7 @@ with tab1:
                         st.subheader("Individual Model Predictions:")
                         prediction_df = pd.DataFrame(predictions_info)
                         prediction_df['Prediction Label'] = prediction_df['Prediction'].apply(lambda x: "Churn" if x == 1 else ("No Churn" if x == 0 else "Error"))
-                        prediction_df['Probability'] = prediction_df['Probability'].apply(lambda x: f"{x:.2f}" if isinstance(x, (float, int)) else x) # Format probability
+                        prediction_df['Probability'] = prediction_df['Probability'].apply(lambda x: f"{x:.2%}" if isinstance(x, (float, int)) else x) # Format probability to percentage
                         st.dataframe(prediction_df[['Model', 'Prediction Label', 'Probability']])
 
                         # Ensemble Voting (consider only successful predictions for voting)
@@ -478,13 +524,17 @@ with tab1:
 
                         ensemble_prediction_label = "No Churn"
                         churn_risk_level = "Low Risk"
-                        if churn_votes >= 1: # If even one model predicts churn, consider it high risk
-                            ensemble_prediction_label = "Churn"
+                        if churn_votes > 0: # If any model predicts churn
                             if churn_votes == len(ENSEMBLE_MODELS):
+                                ensemble_prediction_label = "Churn"
                                 churn_risk_level = "Very High Risk"
-                            else:
+                            elif churn_votes >= (len(ENSEMBLE_MODELS) / 2): # Majority vote for high risk
+                                ensemble_prediction_label = "Churn"
                                 churn_risk_level = "High Risk"
-
+                            else: # Minority vote for churn, still medium risk
+                                ensemble_prediction_label = "No Churn" # Or "Potential Churn"
+                                churn_risk_level = "Medium Risk"
+                        
                         st.markdown(f"### Ensemble Prediction: **{ensemble_prediction_label}**")
                         st.info(f"**Churn Risk Level:** {churn_risk_level}")
 
@@ -537,7 +587,7 @@ with tab1:
                         else:
                             st.info("Gemini recommendations are disabled because the API is not configured.")
 
-                    # Attempt to force garbage collection after prediction (this line should remain)
+                    # Attempt to force garbage collection after prediction
                     gc.collect()
 
                     st.session_state['show_prediction_results'] = True # Set flag to show results
@@ -582,35 +632,3 @@ with tab2:
 
 st.markdown("---")
 st.markdown(f"Developed by Vinu & UK for {COMPANY_NAME} | Version 1.0")
-
-# Custom CSS for transient flash alerts (optional, but good for UX)
-st.markdown("""
-<style>
-.stAlert {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    width: auto;
-    max-width: 300px;
-    z-index: 9999;
-    animation: fadeout 5s forwards;
-}
-
-@keyframes fadeout {
-    0% { opacity: 1; }
-    80% { opacity: 1; }
-    100% { opacity: 0; display: none; }
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Add a simple mechanism for flash messages
-def show_flash_message(message, type="info"):
-    if type == "success":
-        st.success(message, icon="✅")
-    elif type == "error":
-        st.error(message, icon="❌")
-    elif type == "warning":
-        st.warning(message, icon="⚠️")
-    else:
-        st.info(message, icon="ℹ️")

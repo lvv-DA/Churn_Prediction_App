@@ -16,11 +16,10 @@ def preprocess_data(df, target_column='Churn', is_training=True, scaler=None, X_
                             only transforms using provided scaler.
         scaler (StandardScaler, optional): Fitted scaler object for transforming new data.
         X_train_columns (list, optional): List of columns from training data to ensure
-                                           consistent columns for new data.
+                                          consistent columns for new data.
     Returns:
-        tuple: (X, y, scaler, smote_X, smote_y) if is_training=True,
-               (X_processed, scaler) if is_training=False.
-               smote_X and smote_y are None if is_training=False.
+        tuple: (X, y, scaler, smote_X, smote_y, X_cols) if is_training=True,
+               (X_processed, y, scaler, None, None, X_train_columns) if is_training=False.
     """
     X = df.drop(columns=[target_column], errors='ignore')
     y = df[target_column] if target_column in df.columns else None
@@ -68,7 +67,6 @@ if __name__ == '__main__':
     # Ensure data_loader is imported correctly for the local testing block
     from data_loader import load_data 
 
-    # --- THIS LINE HAS BEEN MODIFIED ---
     data_path = os.path.join(project_root, 'data', 'customer_churn.csv')
 
     models_dir = os.path.join(project_root, 'models') # Define models_dir for scaler saving
@@ -107,9 +105,7 @@ if __name__ == '__main__':
         # Load the saved scaler and X_train_columns for prediction preprocessing
         loaded_scaler = joblib.load(scaler_path)
 
-        # Assume X_train_columns.pkl exists and is loaded from models_dir for consistency
-        # For this test, let's derive it from the dummy data if it doesn't exist.
-        # In a real scenario, this would come from the training phase.
+        # For this test, let's derive X_train_columns from the dummy data if it doesn't exist.
         X_dummy = df.drop(columns=['Churn'], errors='ignore')
         dummy_X_train_columns = pd.get_dummies(X_dummy, drop_first=True).columns.tolist()
 

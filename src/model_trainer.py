@@ -79,7 +79,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_cw_probs = ann_model_cw.predict(X_test_scaled)
     print("ANN (Class Weights) Classification Report:\n", classification_report(y_test, ann_cw_preds))
     print("ANN (Class Weights) AUC-ROC Score:", roc_auc_score(y_test, ann_cw_probs))
-    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.keras'))
+    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.keras')) # CHANGED TO .keras
     print("ANN (Class Weights) model saved.")
 
     # --- ANN Model with SMOTE ---
@@ -96,7 +96,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_sm_probs = ann_model_sm.predict(X_test_scaled)
     print("ANN (SMOTE) Classification Report:\n", classification_report(y_test, ann_sm_preds))
     print("ANN (SMOTE) AUC-ROC Score:", roc_auc_score(y_test, ann_sm_probs))
-    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.keras'))
+    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.keras')) # CHANGED TO .keras
     print("ANN (SMOTE) model saved.")
 
     # --- ANN Model with Focal Loss ---
@@ -113,7 +113,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_fl_probs = ann_model_fl.predict(X_test_scaled)
     print("ANN (Focal Loss) Classification Report:\n", classification_report(y_test, ann_fl_preds))
     print("ANN (Focal Loss) AUC-ROC Score:", roc_auc_score(y_test, ann_fl_probs))
-    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.keras'))
+    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.keras')) # CHANGED TO .keras
     print("ANN (Focal Loss) model saved.")
 
     # Save training columns for consistent preprocessing during prediction
@@ -125,7 +125,6 @@ if __name__ == '__main__':
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # --- THIS LINE HAS BEEN MODIFIED ---
     data_path = os.path.join(project_root, 'data', 'customer_churn.csv')
     
     models_dir = os.path.join(project_root, 'models')
@@ -135,9 +134,6 @@ if __name__ == '__main__':
     if df is not None:
         if 'Churn' not in df.columns:
             print("Error: 'Churn' column not found in the dataset.")
-            # Create a dummy 'Churn' column if not present for local testing, or exit
-            # For actual training, 'Churn' must be present.
-            # You might want to raise an error or exit here for a real application.
             df['Churn'] = np.random.randint(0, 2, df.shape[0]) # Dummy Churn for testing
             print("A dummy 'Churn' column has been added for demonstration purposes.")
         
@@ -145,23 +141,17 @@ if __name__ == '__main__':
         y = df['Churn']
 
         # Ensure consistent column names between training and prediction
-        # Get dummified column names from the full dataset before splitting
-        # This creates X_full_processed, which is then used to identify X_train_cols
         X_full_processed = pd.get_dummies(X, drop_first=True)
-        # Ensure that X_train_cols captures all possible columns after one-hot encoding
-        # This will be used to align columns during prediction.
         X_train_cols = X_full_processed.columns.tolist()
-
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 
         # Preprocess training data (scales features and applies SMOTE)
-        # The preprocess_data function now also returns X_train_cols derived from the dummying process.
         X_train_scaled, y_train_processed, scaler, X_sm, y_sm, _ = preprocess_data(
             pd.concat([X_train, y_train], axis=1), is_training=True
         )
         
-        # Save the scaler for later use in prediction
+        # Save the scaler for later use
         save_scaler(scaler, os.path.join(models_dir, 'scaler.pkl'))
         print(f"Scaler saved to {os.path.join(models_dir, 'scaler.pkl')}")
 

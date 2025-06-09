@@ -5,7 +5,7 @@ from tf_keras.models import load_model
 from tf_keras import backend as K
 import tensorflow as tf
 import numpy as np
-import google.generativeai as genai
+# Removed 'import google.generativeai as genai' as it's not directly used here for prediction
 
 # Import preprocess_data from preprocessor.py
 from preprocessor import preprocess_data
@@ -48,6 +48,7 @@ def load_all_models():
     # Define paths to models, scaler, and X_train_columns
     scaler_path = os.path.join(models_dir, 'scaler.pkl')
     xgb_path = os.path.join(models_dir, 'xgb_model.joblib')
+    # Paths now correctly look for .keras files
     ann_class_weights_path = os.path.join(models_dir, 'ann_class_weights_model.keras')
     ann_smote_path = os.path.join(models_dir, 'ann_smote_model.keras')
     ann_focal_loss_path = os.path.join(models_dir, 'ann_focal_loss_model.keras')
@@ -85,7 +86,6 @@ def load_all_models():
     for key, path in ann_models_to_load.items():
         try:
             if os.path.exists(path):
-                # Ensure the Keras session is cleared before loading models
                 K.clear_session()
                 loaded_assets[key] = load_model(path, custom_objects=custom_objects)
                 print(f"DEBUG: Successfully loaded {key} model from {path}")
@@ -93,15 +93,12 @@ def load_all_models():
                 print(f"ERROR: {key} model file not found at expected path: {path}")
         except Exception as e:
             print(f"ERROR: Exception loading {key} model from {path}: {e}")
-            # If a Keras model fails to load, clearing session might help for next attempt
             K.clear_session()
             
     # Ensure models are loaded and compiled (if ANN)
     for model_key in ['ann_class_weights', 'ann_smote', 'ann_focal_loss']:
         if model_key in loaded_assets and loaded_assets[model_key] is not None:
             try:
-                # Check if the model has a compiled optimizer. If not, compile it.
-                # This ensures the model is ready for prediction even if it wasn't explicitly saved with optimizer state.
                 if not hasattr(loaded_assets[model_key], 'optimizer') or loaded_assets[model_key].optimizer is None:
                     loaded_assets[model_key].compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
                     print(f"DEBUG: Re-compiled {model_key} for deployment stability.")
@@ -118,89 +115,22 @@ def load_all_models():
     except Exception as e:
         print(f"ERROR: Exception loading X_train_columns: {e}")
 
-
     return loaded_assets
 
 
-# Helper for Gemini recommendations
-def get_gemini_recommendations(gemini_model_instance, churn_risk_level, customer_details_str, offers_dict, company_name):
-    # This function remains unchanged and is included for completeness.
-    # Its content is the same as the original snippet_4 in your tool output.
-    # ... (function body from original model_predictor.py)
+# Removed get_gemini_recommendations as it's now handled directly in app.py for streaming.
 
-    """
-    Connects to Google Gemini to get personalized recommendations, incorporating pre-listed offers.
-    Args:
-        gemini_model_instance: The initialized GenerativeModel object to use for generating content.
-        churn_risk_level (str): "HIGH CHURN RISK" or "LOW CHURN RISK".
-        customer_details_str (str): A string summarizing relevant customer details.
-        offers_dict (dict): Dictionary of pre-listed offers.
-        company_name (str): The name of the company.
-    Returns:
-        str: AI-generated recommendations.
-    """
-    if gemini_model_instance is None:
-        return "AI recommendations are currently unavailable. Please check API key configuration."
-
-    try:
-        relevant_offers = offers_dict.get("high_churn", []) if churn_risk_level == "HIGH CHURN RISK" else offers_dict.get("low_churn", [])
-        
-        if "Complains: Yes" in customer_details_str:
-            relevant_offers.extend(offers_dict.get("complaint_specific", []))
-
-        offers_str = "\n".join([f"- {offer}" for offer in relevant_offers]) if relevant_offers else "No specific pre-listed offers to suggest at this time."
-
-        system_prompt = f"""You are an expert AI assistant for customer service representatives (CSRs) at {company_name}.
-Your goal is to provide specific, actionable, empathetic, and personalized recommendations to retain customers or build loyalty.
-Focus on concrete actions or phrases the CSR can use, keeping recommendations concise as bullet points.
-Explain reasoning based on customer details. Do not make up facts.
-Prioritize relevant offers from the 'Available Offers' list.
-"""
-
-        user_prompt = f"""
-Customer Churn Risk: {churn_risk_level}
-Customer Details:
-{customer_details_str}
-
-Available {company_name} Offers:
-{offers_str}
-
-Provide 3-5 concise, actionable recommendations for the CSR, including relevant offers.
-"""
-
-        # In a real Streamlit app, you would use st.spinner here for the UI
-        # For this function within model_predictor, it just returns the response.
-        response = gemini_model_instance.generate_content(
-            contents=[
-                {"role": "user", "parts": [system_prompt, user_prompt]}
-            ],
-            stream=True # Use streaming for potentially faster response
-        )
-        
-        full_response_text = ""
-        for chunk in response:
-            if chunk.text:
-                full_response_text += chunk.text
-        
-        return full_response_text
-
-    except Exception as e:
-        return f"AI recommendations are currently unavailable due to an error: {e}"
-
-
-def predict_churn(model, customer_df, scaler, X_train_columns, model_type='xgb', gemini_model=None):
+def predict_churn(model, customer_df, scaler, X_train_columns, model_type='xgb'): # Removed gemini_model argument
     """
     Makes a churn prediction for a single customer using the given model.
-    Also generates AI recommendations for churn prevention.
     Args:
         model: The trained churn prediction model (XGBoost or Keras ANN).
         customer_df (pd.DataFrame): DataFrame with a single customer's data.
         scaler: The fitted StandardScaler.
         X_train_columns (list): List of columns from the training data.
         model_type (str): Type of model ('xgb' or 'ann').
-        gemini_model: The Google Gemini GenerativeModel object.
     Returns:
-        tuple: (prediction (0 or 1), probability, AI recommendations string)
+        tuple: (prediction (0 or 1), probability, None) - Recommendations are generated separately.
     """
     if customer_df.empty:
         return 0, 0.0, "Customer data is empty."
@@ -237,4 +167,4 @@ def predict_churn(model, customer_df, scaler, X_train_columns, model_type='xgb',
         print(f"Error during prediction with {model_type} model: {e}")
         return 0, 0.0, f"Error during prediction: {e}"
 
-    return prediction, probability, None # Recommendations are generated in app.py
+    return prediction, probability, None # Recommendations are generated in app.py, so return None here.
