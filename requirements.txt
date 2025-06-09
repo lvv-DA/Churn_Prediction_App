@@ -23,4 +23,4 @@ google-generativeai
 # If your app strictly needs a specific Keras for TensorFlow,
 # and it's not handled by google-generativeai's dependencies, you might add:
 tf-keras
-#tensorflow==2.16.1
+tensorflow==2.16.1

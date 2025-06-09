@@ -151,6 +151,7 @@ ENSEMBLE_MODELS = {
 
 
 
+
 st.title("💡 Customer Churn Prediction and AI-Powered Retention")
 st.markdown("This application predicts customer churn and provides AI-driven recommendations for retention.")
 
