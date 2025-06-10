@@ -102,7 +102,7 @@ PRE_LISTED_OFFERS = {
 
 @st.cache_resource(hash_funcs={tf.keras.Model: lambda _: None}) # Add hash_funcs to prevent hashing issues with Keras models
 def get_model_assets():
-    """
+    """s
     Loads all trained models and the scaler.
     Clears the TensorFlow session before loading models to ensure a clean graph,
     which is a common practice when using Keras models with st.cache_resource

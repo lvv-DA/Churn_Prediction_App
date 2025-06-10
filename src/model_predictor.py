@@ -37,9 +37,9 @@ def load_all_models():
     # Define paths to models, scaler, and X_train_columns
     scaler_path = os.path.join(models_dir, 'scaler.pkl')
     xgb_path = os.path.join(models_dir, 'xgb_model.joblib')
-    ann_class_weights_path = os.path.join(models_dir, 'ann_class_weights_model.keras')
-    ann_smote_path = os.path.join(models_dir, 'ann_smote_model.keras')
-    ann_focal_loss_path = os.path.join(models_dir, 'ann_focal_loss_model.keras')
+    ann_class_weights_path = os.path.join(models_dir, 'ann_class_weights_model.h5')
+    ann_smote_path = os.path.join(models_dir, 'ann_smote_model.h5')
+    ann_focal_loss_path = os.path.join(models_dir, 'ann_focal_loss_model.h5')
     x_train_cols_path = os.path.join(models_dir, 'X_train_columns.pkl')
 
     custom_objects = {'focal_loss_fixed': focal_loss()}
