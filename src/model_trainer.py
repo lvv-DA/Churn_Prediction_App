@@ -50,6 +50,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
         gamma=0.1,
         random_state=42
     )
+    # Ensure X_sm has the correct column names for fitting
     xgb_model.fit(X_sm, y_sm) # Train on SMOTE'd data
     xgb_preds = xgb_model.predict(X_test_scaled)
     xgb_probs = xgb_model.predict_proba(X_test_scaled)[:, 1]
@@ -79,7 +80,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_cw_probs = ann_model_cw.predict(X_test_scaled)
     print("ANN (Class Weights) Classification Report:\n", classification_report(y_test, ann_cw_preds))
     print("ANN (Class Weights) AUC-ROC Score:", roc_auc_score(y_test, ann_cw_probs))
-    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.keras')) # CHANGED TO .keras
+    ann_model_cw.save(os.path.join(models_dir, 'ann_class_weights_model.h5')) # KEEP .h5 FOR TF2.x if loading is simpler, or .keras
     print("ANN (Class Weights) model saved.")
 
     # --- ANN Model with SMOTE ---
@@ -96,7 +97,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_sm_probs = ann_model_sm.predict(X_test_scaled)
     print("ANN (SMOTE) Classification Report:\n", classification_report(y_test, ann_sm_preds))
     print("ANN (SMOTE) AUC-ROC Score:", roc_auc_score(y_test, ann_sm_probs))
-    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.keras')) # CHANGED TO .keras
+    ann_model_sm.save(os.path.join(models_dir, 'ann_smote_model.h5')) # KEEP .h5
     print("ANN (SMOTE) model saved.")
 
     # --- ANN Model with Focal Loss ---
@@ -113,7 +114,7 @@ def train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_
     ann_fl_probs = ann_model_fl.predict(X_test_scaled)
     print("ANN (Focal Loss) Classification Report:\n", classification_report(y_test, ann_fl_preds))
     print("ANN (Focal Loss) AUC-ROC Score:", roc_auc_score(y_test, ann_fl_probs))
-    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.keras')) # CHANGED TO .keras
+    ann_model_fl.save(os.path.join(models_dir, 'ann_focal_loss_model.h5')) # KEEP .h5
     print("ANN (Focal Loss) model saved.")
 
     # Save training columns for consistent preprocessing during prediction
@@ -134,20 +135,20 @@ if __name__ == '__main__':
     if df is not None:
         if 'Churn' not in df.columns:
             print("Error: 'Churn' column not found in the dataset.")
+            # This should ideally not happen if data_loader is robust
             df['Churn'] = np.random.randint(0, 2, df.shape[0]) # Dummy Churn for testing
             print("A dummy 'Churn' column has been added for demonstration purposes.")
         
         X = df.drop('Churn', axis=1)
         y = df['Churn']
 
-        # Ensure consistent column names between training and prediction
-        X_full_processed = pd.get_dummies(X, drop_first=True)
-        X_train_cols = X_full_processed.columns.tolist()
-
+        # Split data *before* preprocessing to prevent data leakage from scaling/SMOTE
+        # This is where the X_train_columns should originate from after preprocessing
         X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 
         # Preprocess training data (scales features and applies SMOTE)
-        X_train_scaled, y_train_processed, scaler, X_sm, y_sm, _ = preprocess_data(
+        # X_train_cols will be generated and returned by preprocess_data for the training set
+        X_train_scaled, _, scaler, X_sm, y_sm, X_train_cols = preprocess_data(
             pd.concat([X_train, y_train], axis=1), is_training=True
         )
         
@@ -156,10 +157,16 @@ if __name__ == '__main__':
         print(f"Scaler saved to {os.path.join(models_dir, 'scaler.pkl')}")
 
         # Preprocess testing data (only scales, does not apply SMOTE)
+        # Pass the scaler and X_train_columns obtained from the training preprocessing
         X_test_scaled, _, _, _, _, _ = preprocess_data(
-            pd.concat([X_test, y_test], axis=1), is_training=False, scaler=scaler, X_train_columns=X_train_cols
+            pd.concat([X_test, y_test], axis=1), # Combine X_test and y_test for preprocess_data
+            is_training=False,
+            scaler=scaler,
+            X_train_columns=X_train_cols # Pass the columns from the training set
         )
         
+        # Ensure y_train and y_test are Series (preprocess_data returns X as DataFrame and y as Series)
+        # We need the original y_train and y_test for evaluation, not the ones from preprocess_data's return
         train_and_evaluate_models(X_train_scaled, y_train, X_test_scaled, y_test, X_sm, y_sm, X_train_cols, models_dir)
         print("\nModel training and evaluation complete.")
     else:

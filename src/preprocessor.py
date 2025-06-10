@@ -1,118 +1,96 @@
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import joblib
 import os
-# IMPORTANT: There should be NO 'from preprocessor import ...' line here!
 
-def preprocess_data(df, target_column='Churn', is_training=True, scaler=None, X_train_columns=None):
+def preprocess_data(df, is_training, scaler=None, X_train_columns=None):
     """
-    Preprocesses the data by separating features and target, encoding categoricals,
-    and optionally scaling features and applying SMOTE.
+    Preprocesses the data by:
+    1. Separating features (X) and target (y).
+    2. Handling one-hot encoding for categorical features.
+    3. Scaling numerical features.
+    4. Applying SMOTE for oversampling if in training mode.
+
     Args:
-        df (pd.DataFrame): The input DataFrame.
-        target_column (str): The name of the target column.
-        is_training (bool): If True, fits and transforms scaler/SMOTE. If False,
-                            only transforms using provided scaler.
-        scaler (StandardScaler, optional): Fitted scaler object for transforming new data.
-        X_train_columns (list, optional): List of columns from training data to ensure
-                                          consistent columns for new data.
+        df (pd.DataFrame): The input DataFrame containing features and 'Churn' target.
+        is_training (bool): True if preprocessing training data, False for testing/prediction.
+        scaler (StandardScaler, optional): Fitted scaler for consistency in testing/prediction.
+        X_train_columns (list, optional): List of column names from the training data after preprocessing.
+                                          Used to align columns in testing/prediction.
+
     Returns:
-        tuple: (X, y, scaler, smote_X, smote_y, X_cols) if is_training=True,
-               (X_processed, y, scaler, None, None, X_train_columns) if is_training=False.
+        tuple: (X_scaled, y, scaler, X_smote, y_smote, X_processed_columns)
+            X_scaled (pd.DataFrame): Scaled features.
+            y (pd.Series): Target variable.
+            scaler (StandardScaler): The fitted scaler (if is_training=True) or the provided scaler.
+            X_smote (pd.DataFrame): Features after SMOTE (if is_training=True, else None).
+            y_smote (pd.Series): Target after SMOTE (if is_training=True, else None).
+            X_processed_columns (list): List of column names after one-hot encoding.
     """
-    X = df.drop(columns=[target_column], errors='ignore')
-    y = df[target_column] if target_column in df.columns else None
+    if 'Churn' not in df.columns:
+        raise ValueError("DataFrame must contain a 'Churn' column.")
 
-    # Encode categoricals (assuming get_dummies handles non-existent columns gracefully for prediction)
-    X = pd.get_dummies(X, drop_first=True)
+    X = df.drop('Churn', axis=1)
+    y = df['Churn']
 
+    # Identify categorical columns (numeric columns that represent categories, e.g., 'AgeGroup', 'TariffPlan', 'Status')
+    # Assuming these are the columns you want to one-hot encode
+    # These should be consistent with what you've identified in app.py for manual entry.
+    categorical_features_to_encode = ['AgeGroup', 'TariffPlan', 'Status'] 
+
+    # Convert specified columns to 'category' dtype if they exist in X
+    for col in categorical_features_to_encode:
+        if col in X.columns:
+            X[col] = X[col].astype(str).astype('category') # Convert to string first to handle numeric categories properly
+
+    # One-hot encode categorical features. drop_first=True to avoid multicollinearity.
+    X_processed = pd.get_dummies(X, drop_first=True)
+    
+    # --- CRITICAL FIX: Align columns based on X_train_columns ---
+    # This ensures that the columns match exactly between training and testing data,
+    # and fills missing columns with 0 (e.g., if a category doesn't appear in test set).
+    if X_train_columns is not None:
+        # Reindex to ensure all columns present in training data are here, fill missing with 0
+        X_processed = X_processed.reindex(columns=X_train_columns, fill_value=0)
+    elif is_training: # If it's training data AND X_train_columns is None, then this IS the source
+        X_train_columns = X_processed.columns.tolist() # Capture the columns for future use
+
+    # Feature Scaling
     if is_training:
-        # Fit and transform scaler
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X_scaled = scaler.fit_transform(X_processed)
+        X_scaled = pd.DataFrame(X_scaled, columns=X_processed.columns, index=X_processed.index)
+    else:
+        if scaler is None:
+            raise ValueError("Scaler must be provided for non-training data preprocessing.")
+        if X_train_columns is None:
+            raise ValueError("X_train_columns must be provided for non-training data preprocessing.")
+        
+        # Ensure the order of columns matches the one used for fitting the scaler
+        # This is implicitly handled by reindex above, but good to be explicit for clarity
+        X_scaled = scaler.transform(X_processed)
+        X_scaled = pd.DataFrame(X_scaled, columns=X_processed.columns, index=X_processed.index)
 
-        # Apply SMOTE
+
+    # Apply SMOTE only on training data (after scaling)
+    X_smote, y_smote = None, None
+    if is_training:
         smote = SMOTE(random_state=42)
-        X_sm, y_sm = smote.fit_resample(X_scaled, y)
+        X_smote, y_smote = smote.fit_resample(X_scaled, y)
+        # Convert back to DataFrame to retain column names
+        X_smote = pd.DataFrame(X_smote, columns=X_scaled.columns, index=y_smote.index)
 
-        X_cols = X.columns.tolist() # Capture column names after one-hot encoding
-        return X_scaled, y, scaler, X_sm, y_sm, X_cols
-    else:
-        # For prediction, ensure columns match training data
-        if X_train_columns is not None:
-            # Add missing columns with 0 and remove extra columns
-            missing_cols = set(X_train_columns) - set(X.columns)
-            for c in missing_cols:
-                X[c] = 0
-            X = X[X_train_columns] # Ensure column order is the same
+    return X_scaled, y, scaler, X_smote, y_smote, X_train_columns
 
-        if scaler is not None:
-            X_scaled = scaler.transform(X)
-        else:
-            X_scaled = X # If no scaler provided, return unscaled
+def save_scaler(scaler_obj, path):
+    """Saves the scaler object to a file."""
+    joblib.dump(scaler_obj, path)
 
-        return X_scaled, y, scaler, None, None, X_train_columns # Return X_train_columns as last item
-
-def save_scaler(scaler, path):
-    """Saves the trained scaler."""
-    joblib.dump(scaler, path)
-    print(f"Scaler saved to {path}")
-
-# This block is for local testing of preprocessor.py only
-if __name__ == '__main__':
-    print("--- Running preprocessor.py for local testing ---")
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    # Ensure data_loader is imported correctly for the local testing block
-    from data_loader import load_data 
-
-    data_path = os.path.join(project_root, 'data', 'customer_churn.csv')
-
-    models_dir = os.path.join(project_root, 'models') # Define models_dir for scaler saving
-
-    df = load_data(data_path) # Use the correct data_path
-
-    if df is not None:
-        import numpy as np # Import numpy for dummy data creation if needed
-        if 'Churn' not in df.columns:
-            print("Warning: 'Churn' column not found in the dataset for preprocessor testing. Adding dummy churn.")
-            df['Churn'] = np.random.randint(0, 2, df.shape[0]) # Add dummy for testing
-
-        X_scaled, y, scaler, X_sm, y_sm, X_cols = preprocess_data(df, is_training=True)
-        print("\n--- Preprocessing for Training (Preprocessor Test) ---")
-        print("X_scaled shape:", X_scaled.shape)
-        print("y shape:", y.shape)
-        print("X_sm shape:", X_sm.shape)
-        print("y_sm shape:", y_sm.shape)
-
-        # Save the scaler for later use
-        scaler_path = os.path.join(models_dir, 'scaler.pkl')
-        if not os.path.exists(models_dir): # Check if models_dir exists
-            os.makedirs(models_dir)
-        save_scaler(scaler, scaler_path)
-        print(f"Scaler saved to {scaler_path}")
-
-        # Example usage for prediction (using a new dummy df)
-        print("\n--- Preprocessing for Prediction (Preprocessor Test) ---")
-        df_new = pd.DataFrame({
-            'CallFailure': [5], 'Complains': [0], 'SubscriptionLength': [30],
-            'ChargeAmount': [1], 'SecondsUse': [1000], 'FrequencyUse': [20],
-            'FrequencySMS': [10], 'DistinctCalls': [5], 'AgeGroup': [2],
-            'TariffPlan': [1], 'Status': [1], 'Age': [25],
-            'CustomerValue': [500.0]
-        })
-        # Load the saved scaler and X_train_columns for prediction preprocessing
-        loaded_scaler = joblib.load(scaler_path)
-
-        # For this test, let's derive X_train_columns from the dummy data if it doesn't exist.
-        X_dummy = df.drop(columns=['Churn'], errors='ignore')
-        dummy_X_train_columns = pd.get_dummies(X_dummy, drop_first=True).columns.tolist()
-
-        X_new_scaled, _, _, _, _, _ = preprocess_data(
-            df_new, is_training=False, scaler=loaded_scaler, X_train_columns=dummy_X_train_columns
-        )
-        print("X_new_scaled shape:", X_new_scaled.shape)
-        print("Preprocessor testing complete.")
-    else:
-        print("Data loading failed in preprocessor.py test block. Skipping preprocessing tests.")
+# This function is not used in preprocess_data but is kept for potential future use or external calls
+def load_scaler(path):
+    """Loads a scaler object from a file."""
+    if os.path.exists(path):
+        return joblib.load(path)
+    return None
