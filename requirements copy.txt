@@ -1,0 +1,26 @@
+# Core data handling and ML libraries
+pandas
+numpy
+scikit-learn
+xgboost
+imbalanced-learn
+joblib
+
+# Plotting and Visualization
+matplotlib
+seaborn
+plotly
+
+# Streamlit and related ut
+streamlit
+st-copy-to-clipboard
+
+# Google Generative AI
+google-generativeai
+
+# Explicitly exclude tensorflow and tensorboard from this requirements.txt
+# as they cause the protobuf conflict and are likely not needed for the app's runtime.
+# If your app strictly needs a specific Keras for TensorFlow,
+# and it's not handled by google-generativeai's dependencies, you might add:
+tf-keras
+tensorflow==2.16.1

@@ -66,7 +66,7 @@ if src_path not in sys.path:
 # Import necessary functions from src
 from data_loader import load_data
 from preprocessor import preprocess_data
-from model_predictor import predict_churn, load_all_models # load_all_models is correct
+from model_predictor import make_predictions, load_all_models
 
 
 # --- PRE-LISTED OFFERS for Gemini Recommendations ---
