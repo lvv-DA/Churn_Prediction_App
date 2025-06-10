@@ -22,7 +22,6 @@ except ImportError:
 
 # --- Company Branding ---
 COMPANY_NAME = "ABC Telecom"
-
 # --- Streamlit Page Configuration ---
 st.set_page_config(
     page_title=f"Customer Churn Prediction - {COMPANY_NAME}",
@@ -158,7 +157,7 @@ div[data-baseweb="select"] ul[role="listbox"] {{
     max-height: 300px; /* Increase visible height of dropdown list */
     overflow-y: auto; /* Enable scrolling if options exceed max-height */
     width: auto; /* Allow content to dictate width, or set a min-width */
-    min-width: 600px; /* Ensure a minimum width for the dropdown list itself, matching the selectbox */
+    min-width: 300px; /* Ensure a minimum width for the dropdown list itself, matching the selectbox */
     padding-right: 10px; /* Add some padding if scrollbar is present */
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow for better visual separation */
     border-radius: 5px; /* Rounded corners for the dropdown */
@@ -174,10 +173,46 @@ div[data-baseweb="select"] ul[role="listbox"] li:hover {{
     background-color: #E0E7FF; /* Light blue on hover */
 }}
 
+/* --- CUSTOM CSS FOR TABS --- */
+/* Target the label text within the tabs */
+.stTabs [data-baseweb="tab"] div[data-testid="stMarkdownContainer"] p {{
+    font-weight: bold; /* Make text bold */
+    color: #333333; /* Dark grey color for non-selected tabs */
+    font-size: 1.1em; /* Slightly larger text */
+}}
+
+/* Style for the selected tab */
+.stTabs [aria-selected="true"] div[data-testid="stMarkdownContainer"] p {{
+    color: #004080; /* Darker blue for selected tab */
+    font-weight: bolder; /* Even bolder for selected */
+    /* You can also adjust border-bottom, background etc. on the tab button itself */
+}}
+
+/* Optional: style the tab buttons themselves for a better look */
+.stTabs [data-baseweb="tab"] {{
+    background-color: #F8F9FA; /* Light background for tabs */
+    border-bottom: 2px solid #E0E0E0; /* Subtle border */
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    margin-right: 5px; /* Space between tabs */
+    transition: all 0.2s ease-in-out;
+}}
+
+.stTabs [aria-selected="true"] {{
+    background-color: #FFFFFF; /* White background for selected tab */
+    border-bottom: 3px solid #007BFF; /* Primary color border for selected */
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05); /* Subtle shadow for selected */
+}}
+
+.stTabs [data-baseweb="tab"]:hover {{
+    background-color: #E6F7FF; /* Light blue on hover */
+    color: #0056B3;
+}}
+/* --- END CUSTOM CSS FOR TABS --- */
+
 </style>
 """, unsafe_allow_html=True)
 
-st.success("Application started and dependencies checked.")
+# st.success("Application started and dependencies checked.")
 
 # --- Configure Google Gemini API ---
 try:
@@ -190,7 +225,7 @@ try:
 
     genai.configure(api_key=gemini_api_key)
     gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-    st.sidebar.success("Gemini API configured successfully!")
+    st.sidebar.success("Application started and dependencies checked. Gemini API configured successfully.")
 except Exception as e:
     st.sidebar.warning(f"Gemini API not configured. Please set GEMINI_API_KEY: {e}")
     gemini_model = None
@@ -827,20 +862,38 @@ with tab2:
     else:
         st.info("No customer churn data loaded for analysis. Check `data/customer_churn.csv`.")
 
-    st.subheader("Model Training & Management")
+   # --- NEW SECTION: Technical Stack & AI Integration ---
+    st.subheader("Technical Stack & AI Integration")
+    st.markdown(f"""
+        This application leverages a robust technical stack to deliver intelligent churn prediction and retention recommendations:
+
+        * **Frontend & Application Framework**: Built with **Streamlit** (Python), providing an interactive and user-friendly web interface.
+        * **Machine Learning Models**:
+            * Churn prediction is powered by an ensemble of advanced models, including **XGBoost** and **Artificial Neural Networks (ANNs)**. These models are trained on historical customer data to identify patterns indicative of churn risk.
+            * Techniques like SMOTE (Synthetic Minority Over-sampling Technique) and class weighting are employed during training to enhance model performance on imbalanced datasets.
+        * **Generative AI for Recommendations**:
+            * AI-powered retention strategies are generated using **Google Gemini 1.5 Flash**. This state-of-the-art model analyzes customer profiles and churn risk levels to provide personalized, actionable recommendations and key talking points for customer representatives.
+        * **Data Management**: Customer data for both model training and live prediction is sourced from `customer_churn.csv` (containing core features and churn labels) and `customer_data_with_identifiers.csv` (used for customer search and identification within the app).
+
+        This integrated approach ensures highly accurate churn predictions and provides valuable AI-driven insights to support effective customer retention efforts.
+    """)
+    # --- END NEW SECTION ---
+
+    st.subheader("Model Training & Management") # This subheader is now after the new section
     st.markdown("""
-        To train or re-train the machine learning models (XGBoost, ANN models), run the `model_trainer.py` script directly from your terminal:
+        To ensure the churn prediction models are consistently up-to-date and performing optimally, you can initiate a re-training process by executing the dedicated `model_trainer.py` script directly from your terminal:
 
         ```bash
         python src/model_trainer.py
         ```
-        This script will:
-        - Load `customer_churn.csv` (the main dataset for training).
-        - Preprocess the data (one-hot encoding, scaling).
-        - Train the individual models.
-        - Save the trained models (e.g., `xgb_model.joblib`, `ann_model.h5`), the `scaler.pkl`, and the `X_train_columns.pkl` (list of feature names) into the `models/` directory.
 
-        **Important:** Always re-run the training script if you modify data or preprocessing logic to ensure the saved models are up-to-date with your application's expectations.
+        This script automates the complete model training pipeline, which includes:
+        * **Data Ingestion**: Loading `customer_churn.csv`, which serves as the primary dataset for model training.
+        * **Data Preprocessing**: Applying essential transformations such as one-hot encoding for categorical features and scaling for numerical features, preparing the data for optimal model consumption.
+        * **Model Training**: Developing and training the ensemble of machine learning models, including **XGBoost** and various **Artificial Neural Network (ANN)** configurations.
+        * **Artifact Persistence**: Saving the trained model artifacts (e.g., `xgb_model.joblib`, `ann_model.h5`), the data `scaler.pkl`, and the list of feature names (`X_train_columns.pkl`) into the `models/` directory for seamless integration and future use.
+
+        **Important Note:** It is crucial to re-run this training script whenever the underlying customer data (`customer_churn.csv`) or the data preprocessing logic is modified. This ensures that the deployed models remain synchronized with the latest data characteristics and maintain their predictive accuracy.
     """)
 
 st.markdown("---")
