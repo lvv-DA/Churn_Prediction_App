@@ -1,89 +1,51 @@
-# 📉 Customer Churn Prediction and Retention System
+# Customer Churn Prediction Dashboard - ABC Telecom
 
-## 🎯 Objective
+## Overview
 
-The primary goal of this system is to **proactively identify customers at risk of churning** and provide **AI-powered, actionable retention strategies**. It utilizes machine learning to:
+This project develops an interactive Customer Churn Prediction Dashboard designed for **ABC Telecom**. It leverages advanced machine learning models to predict customer churn probability and integrates cutting-edge Generative AI (LLM) capabilities to provide actionable, personalized retention strategies and contextual insights for customer service representatives.
 
-- Predict customer churn likelihood.
-- Enable customer search and manual churn prediction via a web interface.
-- Generate personalized recommendations to mitigate churn.
-- Automate the model training and deployment pipeline.
+The dashboard aims to empower customer service teams by providing real-time churn risk assessments and AI-driven recommendations, enabling proactive engagement and improved customer retention.
 
----
+## Key Features
 
-## 🚀 Key Features
+* **Customer Search & Selection:** Easily find customers by ID, Name, or Phone Number to load their profiles.
+* **Manual Data Entry:** Option to manually input customer features for ad-hoc churn predictions.
+* **Ensemble Churn Prediction:** Utilizes an ensemble of robust Machine Learning models (XGBoost, Artificial Neural Networks with various techniques like SMOTE and Class Weights) to predict churn likelihood.
+* **Visualized Predictions:** Presents churn probabilities and ensemble model votes through intuitive charts.
+* **AI-Powered Retention Recommendations:** Integrates **Google Gemini 1.5 Flash (a Large Language Model - LLM)** to generate tailored retention strategies, potential churn drivers, and key talking points based on the customer's profile and predicted churn risk.
+* **Contextual Customer Q&A (AI Agent Functionality):** Allows customer representatives to ask natural language questions about a specific customer's profile, with the LLM providing direct, data-driven answers. This acts as an intelligent assistant for information retrieval.
+* **Data Overview:** Provides insights into the underlying customer data distributions used for model training.
+* **Model Training & Management Guidance:** Instructions on how to re-train the ML models to keep them updated with fresh data.
 
-- 🔍 **Churn Prediction:** Uses behavioral and demographic data to forecast churn.
-- 🧠 **Multiple Model Support:** Employs XGBoost and various Artificial Neural Networks (ANNs) with different imbalance handling strategies.
-- 🧼 **Preprocessing Pipeline:** One-hot encoding, standard scaling, and SMOTE for training.
-- 🧪 **Synthetic Data Generator:** Generates realistic but anonymized customer identifiers.
-- 🌐 **Streamlit Interface:** Allows customer search, data input, and visualized results.
-- 🤖 **AI Recommendations:** Integrates Google Gemini API to suggest churn prevention actions.
-- 💾 **Model Management:** Automatically saves and loads models and preprocessing artifacts.
+## Technical Stack
 
----
+* **Frontend & Application Framework:** Streamlit (Python)
+* **Machine Learning:** XGBoost, TensorFlow/Keras (for ANNs), scikit-learn
+* **Data Manipulation:** Pandas, NumPy
+* **Generative AI / LLM:** Google Gemini 1.5 Flash API
+* **Plotting:** Plotly Express
+* **Serialization:** Joblib
 
-## 🧱 Application Structure
+## Setup and Installation
 
-| Script               | Description                                                                 |
-|----------------------|-----------------------------------------------------------------------------|
-| `data_loader.py`     | Loads raw datasets with robust error handling for file encoding issues.     |
-| `datagenrator.py`    | Generates synthetic identifiers (CustomerID, Name, etc.) for anonymized data. |
-| `preprocessor.py`    | Handles data encoding, scaling, and SMOTE application.                      |
-| `model_trainer.py`   | Trains XGBoost and ANN models; saves models and preprocessing artifacts.    |
-| `model_predictor.py` | Loads trained models and scalers; handles churn prediction logic.           |
-| `app.py`             | Streamlit frontend with search, manual input, predictions, and recommendations. |
+Follow these steps to get the project up and running on your local machine.
 
----
+### Prerequisites
 
-## 🧰 Tools & Technologies
+* Python 3.8+
+* `pip` (Python package installer)
 
-### 📝 Programming
-- **Python**
+### 1. Clone the Repository
 
-### 📦 Libraries
-- **Data Handling:** `pandas`, `numpy`
-- **ML & DL:** `scikit-learn`, `xgboost`, `imbalanced-learn`, `tensorflow/keras`
-- **Web App:** `streamlit`, `plotly-express`
-- **Model Storage:** `joblib`
-- **AI API Integration:** `google-generativeai`
-- **Utilities:** `os`, `sys`, `io`, `time`, `gc`
+```bash
+git clone <repository_url> # Replace with your actual repository URL
+cd churn_app_01            # Navigate into your project directory
 
----
+### 2. Set Up Python Environment
 
-## 🔄 Data Flow
+```bash
+* It's highly recommended to use a virtual environment to manage dependencies.
 
-### 1. **Data Ingestion**
-- `CFM KTP_Stage 1 task_churn dataset.xlsx` (original)
-- `customer_churn.csv` (cleaned dataset)
-- `customer_data_with_identifiers.csv` (augmented for app)
-
-### 2. **Synthetic Data Creation**
-- Generates CustomerID, Name, Phone, Address
-- Saves output to `customer_data_with_identifiers.csv`
-
-### 3. **Preprocessing**
-- One-hot encoding of categorical variables
-- Standard scaling of numerical features
-- SMOTE for imbalance correction during training
-
-### 4. **Model Training**
-- Splits data (80/20, stratified)
-- Trains:
-  - XGBoost model
-  - ANN models (Class Weights, SMOTE, Focal Loss)
-- Saves models and preprocessing assets to `/models/`
-
-### 5. **Prediction**
-- Loads trained models and scaler
-- Makes predictions on new input via `make_predictions()`
-
-### 6. **Streamlit Web App**
-- Search customer data
-- Manual churn prediction
-- Generate Google Gemini-based retention strategies
-- Model selection for predictions
-
----
-
-
+python -m venv churn_env
+source churn_env/bin/activate  # On macOS/Linux
+# churn_env\Scripts\activate   # On Windows
