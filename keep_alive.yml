@@ -1,0 +1,13 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # Runs every 20 minutes
+    - cron: '*/20 * * * *' # This means "every 20 minutes"
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: curl -s "https://lvv-da-churn-prediction-app-app-tikglc.streamlit.app/"

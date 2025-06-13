@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.git/
+.venv/
+venv/
+.vscode/
+.DS_Store
+# Add any large data files that are not needed in the container,
+# or if you are using a separate volume for data:
+# data/
+# notebooks/
